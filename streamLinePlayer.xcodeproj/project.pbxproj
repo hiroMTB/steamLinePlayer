@@ -63,9 +63,6 @@
 		2FD4B0329909D3527F003494 /* UdpSocket.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 30; name = UdpSocket.h; path = ../../../addons/ofxOsc/libs/oscpack/src/ip/UdpSocket.h; sourceTree = SOURCE_ROOT; };
 		3B361208CD4107E479F04E7B /* NetworkingUtils.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 30; name = NetworkingUtils.cpp; path = ../../../addons/ofxOsc/libs/oscpack/src/ip/posix/NetworkingUtils.cpp; sourceTree = SOURCE_ROOT; };
 		444657A12E59D0ED86981498 /* TimerListener.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 30; name = TimerListener.h; path = ../../../addons/ofxOsc/libs/oscpack/src/ip/TimerListener.h; sourceTree = SOURCE_ROOT; };
-		45E39CDA1FDA05CF00B72F6E /* musical_cylinder_04_strm_01.csv */ = {isa = PBXFileReference; lastKnownFileType = text; name = musical_cylinder_04_strm_01.csv; path = bin/data/musical_cylinder_04_strm_01.csv; sourceTree = "<group>"; };
-		45E39CDB1FDA05CF00B72F6E /* musical_cylinder_04_strm_02.csv */ = {isa = PBXFileReference; lastKnownFileType = text; name = musical_cylinder_04_strm_02.csv; path = bin/data/musical_cylinder_04_strm_02.csv; sourceTree = "<group>"; };
-		45E39CDC1FDA05CF00B72F6E /* musical_cylinder_04_strm_03.csv */ = {isa = PBXFileReference; lastKnownFileType = text; name = musical_cylinder_04_strm_03.csv; path = bin/data/musical_cylinder_04_strm_03.csv; sourceTree = "<group>"; };
 		48974F980F51769171D0B2F5 /* IpEndpointName.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 30; name = IpEndpointName.h; path = ../../../addons/ofxOsc/libs/oscpack/src/ip/IpEndpointName.h; sourceTree = SOURCE_ROOT; };
 		4E95FB446A9C9C6F0DE12D75 /* OscPrintReceivedElements.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 30; name = OscPrintReceivedElements.h; path = ../../../addons/ofxOsc/libs/oscpack/src/osc/OscPrintReceivedElements.h; sourceTree = SOURCE_ROOT; };
 		63A47AC60FFAFC3BF093EC0F /* OscOutboundPacketStream.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 30; name = OscOutboundPacketStream.cpp; path = ../../../addons/ofxOsc/libs/oscpack/src/osc/OscOutboundPacketStream.cpp; sourceTree = SOURCE_ROOT; };
@@ -73,6 +70,9 @@
 		6B65E6930994CC4B2D2B8B33 /* OscPacketListener.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 30; name = OscPacketListener.h; path = ../../../addons/ofxOsc/libs/oscpack/src/osc/OscPacketListener.h; sourceTree = SOURCE_ROOT; };
 		7689F8A0F3D0B7635A8C3104 /* ofxOscArg.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 30; name = ofxOscArg.h; path = ../../../addons/ofxOsc/src/ofxOscArg.h; sourceTree = SOURCE_ROOT; };
 		81967292BFC87A0144BD32C6 /* ofxOscSender.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 30; name = ofxOscSender.cpp; path = ../../../addons/ofxOsc/src/ofxOscSender.cpp; sourceTree = SOURCE_ROOT; };
+		8422279E1FDA4AE00079D512 /* musical_cylinder_04_strm_01.csv */ = {isa = PBXFileReference; lastKnownFileType = text; name = musical_cylinder_04_strm_01.csv; path = bin/data/musical_cylinder_04_strm_01.csv; sourceTree = "<group>"; };
+		8422279F1FDA4AE00079D512 /* musical_cylinder_04_strm_02.csv */ = {isa = PBXFileReference; lastKnownFileType = text; name = musical_cylinder_04_strm_02.csv; path = bin/data/musical_cylinder_04_strm_02.csv; sourceTree = "<group>"; };
+		842227A01FDA4AE00079D512 /* musical_cylinder_04_strm_03.csv */ = {isa = PBXFileReference; lastKnownFileType = text; name = musical_cylinder_04_strm_03.csv; path = bin/data/musical_cylinder_04_strm_03.csv; sourceTree = "<group>"; };
 		8B30E93FD3D3475EED522A0E /* ofxOscBundle.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 30; name = ofxOscBundle.h; path = ../../../addons/ofxOsc/src/ofxOscBundle.h; sourceTree = SOURCE_ROOT; };
 		8C75AFC8774A62495DD53464 /* ofxOscReceiver.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 30; name = ofxOscReceiver.h; path = ../../../addons/ofxOsc/src/ofxOscReceiver.h; sourceTree = SOURCE_ROOT; };
 		9BF3AA0D4FAA89D0F8A0E545 /* OscReceivedElements.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 30; name = OscReceivedElements.cpp; path = ../../../addons/ofxOsc/libs/oscpack/src/osc/OscReceivedElements.cpp; sourceTree = SOURCE_ROOT; };
@@ -229,9 +229,9 @@
 			children = (
 				E4B6FCAD0C3E899E008CF71C /* openFrameworks-Info.plist */,
 				E4EB6923138AFD0F00A09F29 /* Project.xcconfig */,
-				45E39CDA1FDA05CF00B72F6E /* musical_cylinder_04_strm_01.csv */,
-				45E39CDB1FDA05CF00B72F6E /* musical_cylinder_04_strm_02.csv */,
-				45E39CDC1FDA05CF00B72F6E /* musical_cylinder_04_strm_03.csv */,
+				8422279E1FDA4AE00079D512 /* musical_cylinder_04_strm_01.csv */,
+				8422279F1FDA4AE00079D512 /* musical_cylinder_04_strm_02.csv */,
+				842227A01FDA4AE00079D512 /* musical_cylinder_04_strm_03.csv */,
 				E4B69E1C0A3A1BDC003C02F2 /* src */,
 				E4EEC9E9138DF44700A80321 /* openFrameworks */,
 				BB4B014C10F69532006C3DED /* addons */,

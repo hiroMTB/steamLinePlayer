@@ -11,7 +11,7 @@ void ofApp::setup(){
     sender.setup("localhost", 8000);
     receiver.setup(9000);
     
-    //loadData();
+    loadData();
 }
 
 void ofApp::loadData(){
@@ -22,6 +22,7 @@ void ofApp::loadData(){
     magnitude.push_back(ofPolyline());
     
     points.setMode(OF_PRIMITIVE_POINTS);
+    lines.setMode(OF_PRIMITIVE_LINES);
     
     // csv data format (from Paraview)
     //  0 P
@@ -188,6 +189,8 @@ void ofApp::update(){
     float percent = frame/duration;
     
     points.clear();
+    lines.clear();
+    
     int numPoly = poly.size();
     
     for( int i=0; i<numPoly; i++){
@@ -212,9 +215,16 @@ void ofApp::update(){
         points.addVertex(v);
         points.addColor(col);
         
+        glm::vec3 v1 = v;
+        glm::vec3 v2 = v;
+        v2.x = v2.y = v1.z = v2.z = 0;
+        lines.addVertex(v1);
+        lines.addVertex(v2);
+        lines.addColor(ofFloatColor(col));
+        lines.addColor(ofFloatColor(col));
         
         // send OSC
-        if(1){
+        if(2){
             ofxOscBundle bundle;
             
             // elevation -180 ~ 180
@@ -227,12 +237,8 @@ void ofApp::update(){
             ofxOscMessage azi;
             azi.setAddress("");
             azi.addIntArg(2);
-            
-            
         }
     }
-    
-    
     
     while(receiver.hasWaitingMessages()){
         // get the next message
@@ -281,13 +287,19 @@ void ofApp::draw(){
     // ofDrawCircle(0, 0, 100);
     ofPopMatrix();
     
-    for(auto & m : mesh)
+    for(auto & m : mesh){
         m.draw();
-
+    }
+    
     glPointSize(1);
     points.draw();
-    
     cam.end();
+    
+    ofSetupScreenOrtho();
+    ofPushMatrix();
+    ofTranslate(250, 250, 0);
+    lines.draw();
+    ofPopMatrix();
 }
 
 

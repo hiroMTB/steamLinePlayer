@@ -37,6 +37,7 @@ public:
     vector<ofPolyline> magnitude;
     
     ofVboMesh points;
+    ofVboMesh lines;
     
     ofEasyCam cam;
     
