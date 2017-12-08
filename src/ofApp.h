@@ -30,6 +30,7 @@ public:
     void draw();
     
     void keyPressed(int key);
+    void loadData();
     
     vector<ofVboMesh> mesh;
     vector<ofPolyline> poly;
@@ -42,7 +43,8 @@ public:
     vector<ofVboMesh> graph;
     
 
-    ofxOscSender sender;
+    ofxOscSender   sender;
+    ofxOscReceiver receiver;
     
     map<string, ofRange> range;
     
