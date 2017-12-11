@@ -22,6 +22,35 @@
 //    glm::vec3 Points;
 //};
 
+class TriggerSurface{
+    
+public:
+    
+    TriggerSurface(){};
+    
+    TriggerSurface(const glm::vec3 & pos, float width, float height){
+        set(pos, width, height);
+    };
+                   
+    void set(const glm::vec3 & _pos, float width, float height){
+        pos = _pos;
+        size = width;
+    }
+    
+    bool intersect(const glm::vec3 & v, float w){
+        float z = pos.z;
+        return (z-w<v.z && v.z<z+w);
+    }
+    
+    void draw(){        
+        ofDrawCircle(pos, size);
+    }
+    
+    glm::vec3 pos;
+    float size;
+    
+};
+
 class ofApp : public ofBaseApp{
     
 public:
@@ -31,6 +60,7 @@ public:
     
     void keyPressed(int key);
     void loadData();
+    void printOscIn();
     
     vector<ofVboMesh> mesh;
     vector<ofPolyline> poly;
@@ -50,4 +80,8 @@ public:
     map<string, ofRange> range;
     
     map<string, int> paramId;
+    
+    vector<TriggerSurface> surface;
+
+    ofVboMesh triggerPoint;
 };

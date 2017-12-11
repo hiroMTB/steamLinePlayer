@@ -1,6 +1,5 @@
 #include "ofApp.h"
 
-
 void ofApp::setup(){
     
     ofEnableDepthTest();
@@ -12,6 +11,12 @@ void ofApp::setup(){
     receiver.setup(9000);
     
     loadData();
+    
+    // construct surface
+    for(int i=0; i<11; i++){
+        surface.push_back(TriggerSurface());
+        surface.back().set(glm::vec3(0,0, i*100-500), 100, 100);
+    }
 }
 
 void ofApp::loadData(){
@@ -23,6 +28,8 @@ void ofApp::loadData(){
     
     points.setMode(OF_PRIMITIVE_POINTS);
     lines.setMode(OF_PRIMITIVE_LINES);
+    
+    triggerPoint.setMode(OF_PRIMITIVE_POINTS);
     
     // csv data format (from Paraview)
     //  0 P
@@ -134,14 +141,6 @@ void ofApp::loadData(){
     
         if(time[i] == 0){
             
-            int prevNumVertices = mesh.back().getNumVertices();
-            if(prevNumVertices < 10){
-                mesh.pop_back();
-                poly.pop_back();
-                magnitude.pop_back();
-                cout << "delete data because too few vertices : " << prevNumVertices << endl;
-            }
-            
             mesh.push_back(ofVboMesh());
             mesh.back().setMode(OF_PRIMITIVE_LINE_STRIP);
             
@@ -180,16 +179,40 @@ void ofApp::loadData(){
     
     int numPoly = poly.size();
     cout << endl << "create " << numPoly << " polylines" << endl;
+    
+    
+    // delete short one
+    // deleted short lines
+    vector<ofVboMesh>::iterator  meshit = mesh.begin();
+    vector<ofPolyline>::iterator polyit = poly.begin();
+    vector<ofPolyline>::iterator magit  = magnitude.begin();
+    int numDeleted = 0;
+    for(int i=0; meshit!=mesh.end(); i++, meshit++, polyit++, magit++){
+    
+        int num = meshit->getNumVertices();
+        float length = polyit->getLengthAtIndex(polyit->getPerimeter());
+        //glm::vec3 dir = meshit->getVertices()[meshit->getNumVertices()] - meshit->getVertices()[0];
+        //float length = glm::length(dir);
+        if(length < 10 || num<10){
+            mesh.erase(meshit--);
+            poly.erase(polyit--);
+            magnitude.erase(magit--);
+            numDeleted++;
+        }
+    }
+    cout << "deleted " << numDeleted << " data because too few vertices : " << endl;
+
 }
 
-
 void ofApp::update(){
-    int frame = ofGetFrameNum();
-    float duration = 25 * 60 * 3;
-    float percent = frame/duration;
+    int duration = 25 * 60 * 3;
+    int frame = ofGetFrameNum() % duration;
+    float percent = (float)frame/duration;
     
     points.clear();
     lines.clear();
+    
+    triggerPoint.clear();
     
     int numPoly = poly.size();
     
@@ -213,33 +236,196 @@ void ofApp::update(){
         ofSetColor(mag.y, 0, 0);
         
         points.addVertex(v);
+        col.a = 0.7;
         points.addColor(col);
         
+        glm::vec3 zerovec(0,0,0);
         glm::vec3 v1 = v;
-        glm::vec3 v2 = v;
-        v2.x = v2.y = v1.z = v2.z = 0;
+        v1.z  = 0;
+        lines.addVertex(zerovec);
         lines.addVertex(v1);
-        lines.addVertex(v2);
         lines.addColor(ofFloatColor(col));
         lines.addColor(ofFloatColor(col));
         
+        // check intersect
+        float intersectWidth = 0.5;
+        for(int j=0; j<surface.size(); j++){
+            bool on = surface[j].intersect(v, intersectWidth);
+            if(on){
+                triggerPoint.addVertex(v);
+                triggerPoint.addColor(ofFloatColor(0));
+            }
+        }
+        
         // send OSC
-        if(2){
+        if(1){
+            glm::vec3 yAxis(0,1,0);
+            glm::vec3 v1n = glm::normalize(v1);
+            float len = glm::length(v1);
+            float angle = glm::angle(yAxis, v1n);
+            
+            len = ofMap(len, 0, 100.0, 0, 1.0);
+            angle = ofMap(angle, -PI, PI, 0, 1.0);
+            
             ofxOscBundle bundle;
             
-            // elevation -180 ~ 180
-            // /track/7/fx/1/fxparam/1/value: f:0.013
-            ofxOscMessage elev;
-            elev.setAddress("/track/3/fx/1,2,5/fxparam/6,7,7/value 0.25");
-            elev.addIntArg(2);
+            int track = i/100;
+            int lineNum = i%100;
             
-            // azimuth -180 ~ 180
-            ofxOscMessage azi;
-            azi.setAddress("");
-            azi.addIntArg(2);
+            bool bAmbix = false;
+            
+            if(lineNum == 0){
+                if(bAmbix){
+                    // azimuth -180 ~ 180
+                    ofxOscMessage azi;
+                    azi.setAddress("/track/5/fx/1/fxparam/1/value");
+                    azi.addFloatArg(angle);
+                    sender.sendMessage(azi);
+                    cout << "azi : " << angle << endl;
+                    
+                    // elevation -180 ~ 180
+                    ofxOscMessage elev;
+                    elev.setAddress("/track/5/fx/1/fxparam/2/value");
+                    elev.addFloatArg(len);
+                    sender.sendMessage(elev);
+                    cout << "elev : " << len << endl;
+                }
+            }
+            else if(1<=lineNum && lineNum <=10){
+                
+                // line# 1- 10
+                // track control (fader, EQ, etc)
+                //double m = mag.y;
+                //ofxOscMessage msg;
+                //msg.setAddress("/track/"+ ofToString(track) + "/fx/2/fxparam/1/value");
+                //msg.addFloatArg(m);
+                //sender.sendMessage(msg);
+            }
+            else if( 11<=lineNum && lineNum<=20 ){
+
+                // line# 11 ~ 20
+                // FX 1 : synth control
+                int prm = lineNum - 10;
+                int prmOnDaw = -1;
+                switch(prm){
+                    case 1:
+                        prmOnDaw = 1;
+                }
+                
+                if(prmOnDaw!=-1){
+                    float m = mag.y * 0.004;
+                    ofxOscMessage msg;
+                    msg.setAddress("/track/" + ofToString(track) + "/fx/1/fxparam/" +ofToString(prmOnDaw)+ "/value");
+                    msg.addFloatArg(m);
+                    sender.sendMessage(msg);
+                }
+
+            }
+            else if( 21<=lineNum && lineNum<=30 ){
+                
+                // line# 21 ~ 30
+                // FX 2 : effcter reverb?
+                int prm = lineNum - 20;
+                float m = mag.y * 0.004;
+                ofxOscMessage msg;
+                msg.setAddress("/track/" + ofToString(track) + "/fx/2/fxparam/" +ofToString(prm)+ "/value");
+                msg.addFloatArg(m);
+                sender.sendMessage(msg);
+            }
+            else if( 31<=lineNum && lineNum<=40 ){
+                
+                // line# 31 ~ 40
+                // FX 3 : effcter reverb?
+                int prm = lineNum - 30;
+                float m = mag.y * 0.004;
+                ofxOscMessage msg;
+                msg.setAddress("/track/" +ofToString(track)+ "/fx/3/fxparam/"+ofToString(prm)+"/value");
+                msg.addFloatArg(m);
+                sender.sendMessage(msg);
+            }
         }
     }
+
+}
+
+void ofApp::draw(){
+   
+    ofBackground(255);
     
+    cam.begin();
+ 
+    ofDrawAxis(100);
+    ofSetColor(255,0,0);
+    ofNoFill();
+    ofPushMatrix();
+    // ofRotateXDeg(90);
+    // ofDrawCircle(0, 0, 100);
+    ofPopMatrix();
+    
+    for(auto & m : mesh){
+        m.draw();
+    }
+    
+    glPointSize(2);
+    points.draw();
+
+    glPointSize(4);
+    triggerPoint.draw();
+    
+    // circle surface
+    for(auto & t : surface){
+        ofNoFill();
+        ofSetColor(100,50);
+        t.draw();
+    }
+    
+    cam.end();
+    
+#pragma mark Ortho
+    ofSetupScreenOrtho();
+    
+    ofPushMatrix();
+    ofTranslate(250, 250, 0);
+    
+    ofSetColor(100);
+    ofNoFill();
+    ofDrawCircle(0, 0, 50);
+    ofDrawCircle(0, 0, 100);
+    lines.draw();
+    ofPopMatrix();
+}
+
+void ofApp::keyPressed(int key){
+
+    ofxOscMessage msg;
+    msg.setAddress("/track/5/fx/1/fxparam/1/value");
+    msg.addFloatArg(ofRandom(0, 1));
+    sender.sendMessage(msg);
+    
+//    {
+//        ofxOscMessage req;
+//        req.setAddress("/device/track/select/5");
+//        req.addIntArg(1);
+//        sender.sendMessage(req);
+//    }
+//    
+//    {
+//        ofxOscMessage req;
+//        req.setAddress("/device/fx/select/1");
+//        req.addIntArg(1);
+//        sender.sendMessage(req);
+//    }
+// 
+//    {
+//        ofxOscMessage req;
+//        req.setAddress("/device/fxparam/bank/select");
+//        req.addIntArg(1);
+//        sender.sendMessage(req);
+//    }
+
+}
+
+void ofApp::printOscIn(){
     while(receiver.hasWaitingMessages()){
         // get the next message
         ofxOscMessage m;
@@ -270,65 +456,4 @@ void ofApp::update(){
         }
         cout << msg_string << endl;
     }
-}
-
-
-void ofApp::draw(){
-   
-    ofBackground(255);
-    
-    cam.begin();
- 
-    //ofDrawAxis(100);
-    ofSetColor(255,0,0);
-    ofNoFill();
-    ofPushMatrix();
-    // ofRotateXDeg(90);
-    // ofDrawCircle(0, 0, 100);
-    ofPopMatrix();
-    
-    for(auto & m : mesh){
-        m.draw();
-    }
-    
-    glPointSize(1);
-    points.draw();
-    cam.end();
-    
-    ofSetupScreenOrtho();
-    ofPushMatrix();
-    ofTranslate(250, 250, 0);
-    lines.draw();
-    ofPopMatrix();
-}
-
-
-void ofApp::keyPressed(int key){
-
-    ofxOscMessage msg;
-    msg.setAddress("/track/5/fx/1/fxparam/1/value");
-    msg.addFloatArg(ofRandom(0, 1));
-    sender.sendMessage(msg);
-    
-//    {
-//        ofxOscMessage req;
-//        req.setAddress("/device/track/select/5");
-//        req.addIntArg(1);
-//        sender.sendMessage(req);
-//    }
-//    
-//    {
-//        ofxOscMessage req;
-//        req.setAddress("/device/fx/select/1");
-//        req.addIntArg(1);
-//        sender.sendMessage(req);
-//    }
-// 
-//    {
-//        ofxOscMessage req;
-//        req.setAddress("/device/fxparam/bank/select");
-//        req.addIntArg(1);
-//        sender.sendMessage(req);
-//    }
-
 }
