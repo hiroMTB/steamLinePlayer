@@ -2,15 +2,29 @@
 
 void ofApp::setup(){
     
-    ofEnableDepthTest();
     ofEnableAlphaBlending();
-    ofSetCircleResolution(120);
+    ofSetCircleResolution(60);
+    ofSetFrameRate(30);
 
+    // camera settings
+    cam.setNearClip(1);
+    cam.setFarClip(10000);
+    
     // osc
     sender.setup("localhost", 8000);
     receiver.setup(9000);
     
-    loadData();
+    // csv data load
+    mesh.push_back(ofVboMesh());
+    mesh.back().setMode(OF_PRIMITIVE_LINE_STRIP);
+    
+    poly.push_back(ofPolyline());
+    magnitude.push_back(ofPolyline());
+    points.setMode(OF_PRIMITIVE_POINTS);
+    prmLine.setMode(OF_PRIMITIVE_LINES);
+    triggerPoint.setMode(OF_PRIMITIVE_POINTS);
+    loadData("musical_cylinder_04_strm_02.csv");
+    loadData("musical_cylinder_04_strm_01.csv");
     
     // construct surface
     for(int i=0; i<11; i++){
@@ -19,17 +33,7 @@ void ofApp::setup(){
     }
 }
 
-void ofApp::loadData(){
-    mesh.push_back(ofVboMesh());
-    mesh.back().setMode(OF_PRIMITIVE_LINE_STRIP);
-    
-    poly.push_back(ofPolyline());
-    magnitude.push_back(ofPolyline());
-    
-    points.setMode(OF_PRIMITIVE_POINTS);
-    lines.setMode(OF_PRIMITIVE_LINES);
-    
-    triggerPoint.setMode(OF_PRIMITIVE_POINTS);
+void ofApp::loadData(string fileName){
     
     // csv data format (from Paraview)
     //  0 P
@@ -53,7 +57,7 @@ void ofApp::loadData(){
     // 18 Points:0
     // 19 Points:1
     // 20 Points:2
-    ifstream file(ofToDataPath("musical_cylinder_04_strm_02.csv"));
+    ifstream file(ofToDataPath(fileName));
 
     string str;
     getline(file,str);
@@ -205,12 +209,12 @@ void ofApp::loadData(){
 }
 
 void ofApp::update(){
-    int duration = 25 * 60 * 3;
+    int duration = ofGetTargetFrameRate() * 60 * 6;
     int frame = ofGetFrameNum() % duration;
     float percent = (float)frame/duration;
     
     points.clear();
-    lines.clear();
+    prmLine.clear();
     
     triggerPoint.clear();
     
@@ -233,19 +237,17 @@ void ofApp::update(){
         col =  red*len + blue*(1.0-len);
         col.a = 0.9;
         
-        ofSetColor(mag.y, 0, 0);
-        
         points.addVertex(v);
-        col.a = 0.7;
         points.addColor(col);
         
-        glm::vec3 zerovec(0,0,0);
-        glm::vec3 v1 = v;
-        v1.z  = 0;
-        lines.addVertex(zerovec);
-        lines.addVertex(v1);
-        lines.addColor(ofFloatColor(col));
-        lines.addColor(ofFloatColor(col));
+        {
+            glm::vec3 zerovec(0,0,v.z);
+            prmLine.addVertex(zerovec);
+            prmLine.addVertex(v);
+            col.a = 0.4;
+            prmLine.addColor(ofFloatColor(col));
+            prmLine.addColor(ofFloatColor(col));
+        }
         
         // check intersect
         float intersectWidth = 0.5;
@@ -260,6 +262,8 @@ void ofApp::update(){
         // send OSC
         if(1){
             glm::vec3 yAxis(0,1,0);
+            glm::vec3 v1 = v;
+            v1.z = 0;
             glm::vec3 v1n = glm::normalize(v1);
             float len = glm::length(v1);
             float angle = glm::angle(yAxis, v1n);
@@ -354,22 +358,29 @@ void ofApp::draw(){
     
     cam.begin();
  
-    ofDrawAxis(100);
-    ofSetColor(255,0,0);
-    ofNoFill();
-    ofPushMatrix();
-    // ofRotateXDeg(90);
-    // ofDrawCircle(0, 0, 100);
-    ofPopMatrix();
-    
-    for(auto & m : mesh){
-        m.draw();
+    if(cam.getOrtho()){
+        ofDisableDepthTest();
+        ofScale(3, 3);
+    }else{
+        ofEnableDepthTest();
     }
     
-    glPointSize(2);
+    ofDrawAxis(100);
+    
+    if(!bPrmMode){
+        for(auto & m : mesh){
+            m.draw();
+        }
+    }else{
+        prmLine.draw();
+    }
+    
+    // indicator
+    glPointSize(3);
     points.draw();
-
-    glPointSize(4);
+    
+    // collision
+    glPointSize(6);
     triggerPoint.draw();
     
     // circle surface
@@ -381,48 +392,22 @@ void ofApp::draw(){
     
     cam.end();
     
-#pragma mark Ortho
-    ofSetupScreenOrtho();
-    
-    ofPushMatrix();
-    ofTranslate(250, 250, 0);
-    
-    ofSetColor(100);
-    ofNoFill();
-    ofDrawCircle(0, 0, 50);
-    ofDrawCircle(0, 0, 100);
-    lines.draw();
-    ofPopMatrix();
 }
 
 void ofApp::keyPressed(int key){
 
-    ofxOscMessage msg;
-    msg.setAddress("/track/5/fx/1/fxparam/1/value");
-    msg.addFloatArg(ofRandom(0, 1));
-    sender.sendMessage(msg);
-    
-//    {
-//        ofxOscMessage req;
-//        req.setAddress("/device/track/select/5");
-//        req.addIntArg(1);
-//        sender.sendMessage(req);
-//    }
-//    
-//    {
-//        ofxOscMessage req;
-//        req.setAddress("/device/fx/select/1");
-//        req.addIntArg(1);
-//        sender.sendMessage(req);
-//    }
-// 
-//    {
-//        ofxOscMessage req;
-//        req.setAddress("/device/fxparam/bank/select");
-//        req.addIntArg(1);
-//        sender.sendMessage(req);
-//    }
-
+    switch(key){
+        case 'O':
+            cam.getOrtho() ? cam.disableOrtho() : cam.enableOrtho();
+            break;
+        
+        case 'P':
+            bPrmMode = !bPrmMode;
+            break;
+            
+        default:
+            break;
+    }
 }
 
 void ofApp::printOscIn(){

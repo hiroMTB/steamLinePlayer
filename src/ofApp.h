@@ -59,7 +59,7 @@ public:
     void draw();
     
     void keyPressed(int key);
-    void loadData();
+    void loadData(string fileName);
     void printOscIn();
     
     vector<ofVboMesh> mesh;
@@ -67,7 +67,8 @@ public:
     vector<ofPolyline> magnitude;
     
     ofVboMesh points;
-    ofVboMesh lines;
+    ofVboMesh triggerPoint;
+    ofVboMesh prmLine;
     
     ofEasyCam cam;
     
@@ -83,5 +84,6 @@ public:
     
     vector<TriggerSurface> surface;
 
-    ofVboMesh triggerPoint;
+    
+    bool bPrmMode = false;
 };
