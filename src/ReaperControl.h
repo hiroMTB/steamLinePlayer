@@ -8,11 +8,29 @@ class ReaperControl{
 public:
     
     ReaperControl(){
+        resetValue = 30 * 1; // 5 sec hold
         sender.setup("localhost", 8000);
+        noteOnState.assign(16, vector<int>());
+        for(vector<int> & v : noteOnState){
+            v.assign(128, 0);
+        }
     };
     
-    void sendMidiNoteOn(unsigned int midiCh, unsigned int noteNum, unsigned int velocity, unsigned int duration){
+    void update(){
 
+        for(vector<int> & v : noteOnState){
+            for(int i=0; i<v.size(); i++){
+                int wait = v[i];
+                v[i] = MAX(0, wait-1);
+            }
+        }
+    }
+    
+    void sendNoteOn(unsigned int midiCh, unsigned int noteNum, unsigned int velocity, unsigned int duration){
+
+        if(noteOnState[midiCh][noteNum] != 0 ) return;
+        noteOnState[midiCh][noteNum] = resetValue;
+        
         ofxOscMessage on;
         char c[255];
         sprintf(c, "/vkb_midi/%i/note/%i", midiCh, noteNum);
@@ -26,12 +44,12 @@ public:
     }
     
     void sendNoteOff(string address, unsigned int duration){
-        std::this_thread::sleep_for( chrono::microseconds(duration*1000) );
+        if(duration!=0) std::this_thread::sleep_for( chrono::microseconds(duration*1000) );
         ofxOscMessage off;
         off.setAddress(address);
         sender.sendMessage(off);
         
-        ofLogVerbose("Note OFF", address);
+        //ofLogVerbose("Note OFF", address);
     }
     
     void sendFxParam(unsigned int track, unsigned int fx, unsigned int prm, float value){
@@ -44,5 +62,19 @@ public:
         //ofLogVerbose("", string(c));
     }
     
+    void sendNoteOffAll(){
+        for(int i=0; i<16; i++){
+            for(int j=0; j<127; j++){
+                char c[255];
+                sprintf(c, "/vkb_midi/%i/note/%i", i, j);
+                sendNoteOff(string(c), 0);
+            }
+        }
+    }
+    
     ofxOscSender sender;
+    
+    vector<vector<int>> noteOnState;
+
+    int resetValue;
 };

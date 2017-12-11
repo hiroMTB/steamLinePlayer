@@ -47,6 +47,7 @@ public:
     void setup();
     void update();
     void draw();
+    void exit();
     
     void keyPressed(int key);
     void loadData(string fileName);
@@ -71,4 +72,5 @@ public:
     ofxOscReceiver receiver;
 
     ReaperControl reaper;
+    
 };
