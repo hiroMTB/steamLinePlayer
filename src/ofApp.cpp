@@ -2,6 +2,9 @@
 
 void ofApp::setup(){
     
+    ofSetLogLevel(OF_LOG_VERBOSE);
+    ofSetWindowPosition(0,0);
+    
     ofEnableAlphaBlending();
     ofSetCircleResolution(60);
     ofSetFrameRate(30);
@@ -11,9 +14,8 @@ void ofApp::setup(){
     cam.setFarClip(10000);
     
     // osc
-    sender.setup("localhost", 8000);
     receiver.setup(9000);
-    
+
     // csv data load
     mesh.push_back(ofVboMesh());
     mesh.back().setMode(OF_PRIMITIVE_LINE_STRIP);
@@ -23,7 +25,7 @@ void ofApp::setup(){
     points.setMode(OF_PRIMITIVE_POINTS);
     prmLine.setMode(OF_PRIMITIVE_LINES);
     triggerPoint.setMode(OF_PRIMITIVE_POINTS);
-    loadData("musical_cylinder_04_strm_02.csv");
+    //loadData("musical_cylinder_04_strm_02.csv");
     loadData("musical_cylinder_04_strm_01.csv");
     
     // construct surface
@@ -256,43 +258,38 @@ void ofApp::update(){
             if(on){
                 triggerPoint.addVertex(v);
                 triggerPoint.addColor(ofFloatColor(0));
+                
+                // MIDI noteOff thread gen
             }
         }
         
         // send OSC
         if(1){
-            glm::vec3 yAxis(0,1,0);
-            glm::vec3 v1 = v;
-            v1.z = 0;
-            glm::vec3 v1n = glm::normalize(v1);
-            float len = glm::length(v1);
-            float angle = glm::angle(yAxis, v1n);
-            
-            len = ofMap(len, 0, 100.0, 0, 1.0);
-            angle = ofMap(angle, -PI, PI, 0, 1.0);
             
             ofxOscBundle bundle;
             
-            int track = i/100;
+            int track = i/100 + 1;      // Reaper Track starts from 1
             int lineNum = i%100;
             
             bool bAmbix = false;
             
             if(lineNum == 0){
                 if(bAmbix){
+                    glm::vec3 yAxis(0,1,0);
+                    glm::vec3 v1 = v;
+                    v1.z = 0;
+                    glm::vec3 v1n = glm::normalize(v1);
+                    float len = glm::length(v1);
+                    float angle = glm::angle(yAxis, v1n);
+                    
+                    len = ofMap(len, 0, 100.0, 0, 1.0);
+                    angle = ofMap(angle, -PI, PI, 0, 1.0);
+
                     // azimuth -180 ~ 180
-                    ofxOscMessage azi;
-                    azi.setAddress("/track/5/fx/1/fxparam/1/value");
-                    azi.addFloatArg(angle);
-                    sender.sendMessage(azi);
-                    cout << "azi : " << angle << endl;
+                    reaper.sendFxParam(track, 4, 1, angle);
                     
                     // elevation -180 ~ 180
-                    ofxOscMessage elev;
-                    elev.setAddress("/track/5/fx/1/fxparam/2/value");
-                    elev.addFloatArg(len);
-                    sender.sendMessage(elev);
-                    cout << "elev : " << len << endl;
+                    reaper.sendFxParam(track, 4, 2, len);
                 }
             }
             else if(1<=lineNum && lineNum <=10){
@@ -303,7 +300,6 @@ void ofApp::update(){
                 //ofxOscMessage msg;
                 //msg.setAddress("/track/"+ ofToString(track) + "/fx/2/fxparam/1/value");
                 //msg.addFloatArg(m);
-                //sender.sendMessage(msg);
             }
             else if( 11<=lineNum && lineNum<=20 ){
 
@@ -318,10 +314,7 @@ void ofApp::update(){
                 
                 if(prmOnDaw!=-1){
                     float m = mag.y * 0.004;
-                    ofxOscMessage msg;
-                    msg.setAddress("/track/" + ofToString(track) + "/fx/1/fxparam/" +ofToString(prmOnDaw)+ "/value");
-                    msg.addFloatArg(m);
-                    sender.sendMessage(msg);
+                    reaper.sendFxParam(track, 1, prmOnDaw, m);
                 }
 
             }
@@ -331,10 +324,7 @@ void ofApp::update(){
                 // FX 2 : effcter reverb?
                 int prm = lineNum - 20;
                 float m = mag.y * 0.004;
-                ofxOscMessage msg;
-                msg.setAddress("/track/" + ofToString(track) + "/fx/2/fxparam/" +ofToString(prm)+ "/value");
-                msg.addFloatArg(m);
-                sender.sendMessage(msg);
+                reaper.sendFxParam(track, 2, prm, m);
             }
             else if( 31<=lineNum && lineNum<=40 ){
                 
@@ -342,10 +332,7 @@ void ofApp::update(){
                 // FX 3 : effcter reverb?
                 int prm = lineNum - 30;
                 float m = mag.y * 0.004;
-                ofxOscMessage msg;
-                msg.setAddress("/track/" +ofToString(track)+ "/fx/3/fxparam/"+ofToString(prm)+"/value");
-                msg.addFloatArg(m);
-                sender.sendMessage(msg);
+                reaper.sendFxParam(track, 3, prm, m);
             }
         }
     }
@@ -395,7 +382,7 @@ void ofApp::draw(){
 }
 
 void ofApp::keyPressed(int key){
-
+    
     switch(key){
         case 'O':
             cam.getOrtho() ? cam.disableOrtho() : cam.enableOrtho();
@@ -403,6 +390,10 @@ void ofApp::keyPressed(int key){
         
         case 'P':
             bPrmMode = !bPrmMode;
+            break;
+            
+        case 't':
+            reaper.sendMidiNoteOn(0, ofRandom(36,60), ofRandom(80,120), ofRandom(10,100));
             break;
             
         default:
