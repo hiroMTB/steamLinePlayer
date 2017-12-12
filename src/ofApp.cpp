@@ -51,6 +51,15 @@ void ofApp::update(){
     
     triggerPoint.clear();
     
+    vector<TriggerData>::iterator it = triggerData.begin();
+    for(; it!=triggerData.end(); it++){
+        it->dispLife -=1;
+        if(it->dispLife<=0){
+            triggerData.erase(it);
+            it--;
+        }
+    }
+    
     int numPoly = poly.size();
     
     for( int i=0; i<numPoly; i++){
@@ -92,20 +101,25 @@ void ofApp::update(){
         bool bAmbix = false;
         int ambixSlot = 3;
         
-        // check intersect
-        float intersectWidth = 0.5;
-        for(int j=0; j<surface.size(); j++){
-            bool on = surface[j].intersect(v, intersectWidth);
-            if(on){
-                triggerPoint.addVertex(v);
-                triggerPoint.addColor(ofFloatColor(0));
-                
-                // MIDI noteOn
-                int midiCh  = track-1;
-                int note    = ofRandom(36, 72);
-                int vel     = ofRandom(50,100);
-                int dur     = ofRandom(10,50);
-                reaper.sendNoteOn(midiCh, note, vel, dur);
+        // check intersect & send noteOn
+        if(i%5==0){
+            float intersectWidth = 0.5;
+            for(int j=0; j<surface.size(); j++){
+                bool on = surface[j].intersect(v, intersectWidth);
+                if(on){
+                    triggerPoint.addVertex(v);
+                    triggerPoint.addColor(ofFloatColor(0));
+                    
+                    // MIDI noteOn
+                    int midiCh  = track-1;
+                    int note    = ofRandom(36, 72);
+                    int vel     = ofRandom(50,100);
+                    int dur     = ofRandom(10,50);
+                    reaper.sendNoteOn(midiCh, note, vel, dur);
+                    
+                    // store data
+                    triggerData.push_back(TriggerData(v, midiCh, note, vel, dur));
+                }
             }
         }
         
@@ -182,55 +196,64 @@ void ofApp::draw(){
     ofEnableAntiAliasing();
     ofBackground(255);
     
-    cam.begin();
+    cam.begin(); {
  
-    if(cam.getOrtho()){
-        ofDisableDepthTest();
-        ofScale(3, 3);
-    }else{
-        ofEnableDepthTest();
-    }
-    
-    ofDrawAxis(100);
-    
-    if(!bPrmMode){
-        for(auto & m : mesh){
-            m.draw();
+        if(cam.getOrtho()){
+            ofDisableDepthTest();
+            ofScale(3, 3);
+        }else{
+            ofEnableDepthTest();
         }
-    }else{
-        prmLine.draw();
-    }
-    
-    // indicator
-    glPointSize(3);
-    points.draw();
-    
-    // collision
-    glPointSize(6);
-    triggerPoint.draw();
-    
-    // circle surface
-    for(auto & t : surface){
-        ofNoFill();
-        ofSetColor(100,50);
-        t.draw();
-    }
-    
-    cam.end();
-    
-    ofDisableAntiAliasing();
-    ofSetupScreenOrtho();
-    for(int i=0; i<triggerPoint.getNumVertices(); i++){
         
-        glm::vec3 v = triggerPoint.getVertex(i);
-        glm::vec3 s = cam.worldToScreen(v);
-        glm::vec3 left = s;
-        s.x = 50;
-        ofSetLineWidth(1);
-        ofSetColor(100, 200);
-        ofDrawLine(s, left);
-    }
+        ofDrawAxis(100);
+        
+        if(!bPrmMode){
+            for(auto & m : mesh){
+                m.draw();
+            }
+        }else{
+            prmLine.draw();
+        }
+        
+        // indicator
+        glPointSize(3);
+        points.draw();
+        
+        // collision
+        glPointSize(6);
+        triggerPoint.draw();
+        
+        // circle surface
+        for(auto & t : surface){
+            ofNoFill();
+            ofSetColor(100,50);
+            t.draw();
+        }
+    }cam.end();
     
+    //ofDisableAntiAliasing();
+    ofSetupScreenOrtho();
+    vector<int> nTrigger;
+    nTrigger.assign(16,0);
+    for(int i=0; i<triggerData.size(); i++){
+        TriggerData & d = triggerData[i];
+        glm::vec3 & v = d.pos;
+        glm::vec3 s1 = cam.worldToScreen(v);
+        bool left = d.midiCh<5;
+        int x = left ? 220 : ofGetWidth()-220;
+        int y = 50 + (d.midiCh%5) * 200;
+        glm::vec3 s2(x, y+nTrigger[d.midiCh]*10, 0);
+        
+        //ofSetLineWidth(1);
+        //ofSetColor(0);
+        //ofDrawLine(s1, s2);
+        char c[255];
+        sprintf(c, "noteOn ch%i n%i v%i d%i", d.midiCh, d.note, d.vel, d.dur);
+        ofSetColor(100);
+        int sx = s2.x + (left ? -200:30);
+        ofDrawBitmapString(string(c), sx, s2.y);
+        nTrigger[d.midiCh]++;
+    }
 }
 
 void ofApp::keyPressed(int key){

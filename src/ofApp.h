@@ -34,6 +34,20 @@ public:
     
 };
 
+class TriggerData{
+
+public:
+    TriggerData(glm::vec3 _pos, int _midiCh, int _note, int _vel, int _dur)
+    :pos(_pos), midiCh(_midiCh), note(_note), vel(_vel), dur(_dur), dispLife(10){};
+
+    glm::vec3 pos;
+    int midiCh;
+    int note;
+    int vel;
+    int dur;
+    int dispLife;
+};
+
 class ofApp : public ofBaseApp{
     
 public:
@@ -72,5 +86,6 @@ public:
     ofxOscReceiver receiver;
 
     ReaperControl reaper;
-    
+
+    vector<TriggerData> triggerData;
 };
