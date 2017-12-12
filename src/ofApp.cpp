@@ -93,21 +93,19 @@ void ofApp::update(){
         int ambixSlot = 3;
         
         // check intersect
-        if(i%4==0){
-            float intersectWidth = 0.5;
-            for(int j=0; j<surface.size(); j++){
-                bool on = surface[j].intersect(v, intersectWidth);
-                if(on){
-                    triggerPoint.addVertex(v);
-                    triggerPoint.addColor(ofFloatColor(0));
-                    
-                    // MIDI noteOn
-                    int midiCh  = track-1;
-                    int note    = ofRandom(36, 72);
-                    int vel     = ofRandom(50,100);
-                    int dur     = ofRandom(10,50);
-                    reaper.sendNoteOn(midiCh, note, vel, dur);
-                }
+        float intersectWidth = 0.5;
+        for(int j=0; j<surface.size(); j++){
+            bool on = surface[j].intersect(v, intersectWidth);
+            if(on){
+                triggerPoint.addVertex(v);
+                triggerPoint.addColor(ofFloatColor(0));
+                
+                // MIDI noteOn
+                int midiCh  = track-1;
+                int note    = ofRandom(36, 72);
+                int vel     = ofRandom(50,100);
+                int dur     = ofRandom(10,50);
+                reaper.sendNoteOn(midiCh, note, vel, dur);
             }
         }
         
@@ -181,6 +179,7 @@ void ofApp::update(){
 
 void ofApp::draw(){
    
+    ofEnableAntiAliasing();
     ofBackground(255);
     
     cam.begin();
@@ -218,6 +217,19 @@ void ofApp::draw(){
     }
     
     cam.end();
+    
+    ofDisableAntiAliasing();
+    ofSetupScreenOrtho();
+    for(int i=0; i<triggerPoint.getNumVertices(); i++){
+        
+        glm::vec3 v = triggerPoint.getVertex(i);
+        glm::vec3 s = cam.worldToScreen(v);
+        glm::vec3 left = s;
+        s.x = 50;
+        ofSetLineWidth(1);
+        ofSetColor(100, 200);
+        ofDrawLine(s, left);
+    }
     
 }
 
