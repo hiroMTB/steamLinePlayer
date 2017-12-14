@@ -3,7 +3,7 @@
 
 void ofApp::setup(){
 
-    reaper.sendNoteOffAll();
+    sender.sendNoteOffAll();
     
     ofSetLogLevel(OF_LOG_VERBOSE);
     ofSetWindowPosition(0,0);
@@ -32,18 +32,20 @@ void ofApp::setup(){
     loadData("musical_cylinder_04_strm_02.csv");
     
     // construct surface
-    for(int i=0; i<11; i++){
+    int nSurface = 21;
+    int surfaceWidth = 1000.0f/(nSurface-1);
+    for(int i=0; i<nSurface; i++){
         surface.push_back(TriggerSurface());
-        surface.back().set(glm::vec3(0,0, i*100-500), 100, 100);
+        surface.back().set(glm::vec3(0,0, i*surfaceWidth-500), 100, 100);
     }
 }
 
 void ofApp::update(){
     
-    reaper.update();
+    sender.update();
     
-    int duration = ofGetTargetFrameRate() * 60 * 6;
-    int frame = ofGetFrameNum() % duration;
+    int duration = ofGetTargetFrameRate() * 60 * 1;
+    frame = ++frame % duration;
     float percent = (float)frame/duration;
     
     points.clear();
@@ -62,20 +64,21 @@ void ofApp::update(){
     
     int numPoly = poly.size();
     
+    
     for( int i=0; i<numPoly; i++){
         ofPolyline & p = poly[i];
         ofPolyline & m = magnitude[i];
+        ofPolyline & r = rotation[i];
         
         glm::vec3 v = p.getPointAtPercent(percent);
         glm::vec3 mag = m.getPointAtPercent(percent);
-        
-        //glm::vec3 v = p.getPointAtLength(frame*0.5);
-        //glm::vec3 mag = m.getPointAtLength(frame*0.5);
+        glm::vec3 rot = r.getPointAtPercent(percent);
         
         ofFloatColor red(1,0,0);
         ofFloatColor blue(0,0,1);
         ofFloatColor col;
-        float len = mag.y * 0.004;
+
+        float len = rot.y * 0.004;
         col =  red*len + blue*(1.0-len);
         col.a = 0.9;
         
@@ -90,104 +93,84 @@ void ofApp::update(){
             prmLine.addColor(ofFloatColor(col));
             prmLine.addColor(ofFloatColor(col));
         }
-        
-        // Reaper
-        // Track Number : 1 ~ ...
-        // Midi Ch      : 0 ~ 15
-        // fx           :
-        // fxparam      :
-        int track = i/100 + 1;
-        int lineNum = i%100;
-        bool bAmbix = false;
-        int ambixSlot = 3;
-        
-        // check intersect & send noteOn
-        if(i%5==0){
-            float intersectWidth = 0.5;
-            for(int j=0; j<surface.size(); j++){
-                bool on = surface[j].intersect(v, intersectWidth);
-                if(on){
-                    triggerPoint.addVertex(v);
-                    triggerPoint.addColor(ofFloatColor(0));
-                    
-                    // MIDI noteOn
-                    int midiCh  = track-1;
-                    int note    = ofRandom(36, 72);
-                    int vel     = ofRandom(50,100);
-                    int dur     = ofRandom(10,50);
-                    reaper.sendNoteOn(midiCh, note, vel, dur);
-                    
-                    // store data
-                    triggerData.push_back(TriggerData(v, midiCh, note, vel, dur));
-                }
-            }
-        }
-        
-        // send OSC
-        if(1){
-            if(lineNum == 0){
-                if(bAmbix){
-                    glm::vec3 yAxis(0,1,0);
-                    glm::vec3 v1 = v;
-                    v1.z = 0;
-                    glm::vec3 v1n = glm::normalize(v1);
-                    float len = glm::length(v1);
-                    float angle = glm::angle(yAxis, v1n);
-                    
-                    len = ofMap(len, 0, 100.0, 0, 1.0);
-                    angle = ofMap(angle, -PI, PI, 0, 1.0);
-                    
-                    // azimuth -180 ~ 180
-                    reaper.sendFxParam(track, ambixSlot, 1, angle);
-                    
-                    // elevation -180 ~ 180
-                    reaper.sendFxParam(track, ambixSlot, 2, len);
-                }
-            }
-            else if(1<=lineNum && lineNum <=10){
-                
-                // line# 1- 10
-                // track control (fader, EQ, etc)
-                //double m = mag.y;
-                //ofxOscMessage msg;
-                //msg.setAddress("/track/"+ ofToString(track) + "/fx/2/fxparam/1/value");
-                //msg.addFloatArg(m);
-            }
-            else if( 11<=lineNum && lineNum<=20 ){
+    }
+    
+    // sender
+    // Midi Ch      : 1 ~ 16
+    int maxMidiCh = 16;
+    int dataWidth = numPoly/maxMidiCh;
 
-                // line# 11 ~ 20
-                // FX 1 : synth control
-                int prm = lineNum - 10;
-                int prmOnDaw = -1;
-                switch(prm){
-                    case 1:
-                        prmOnDaw = 1;
-                }
-                
-                if(prmOnDaw!=-1){
-                    float m = mag.y * 0.004;
-                    reaper.sendFxParam(track, 1, prmOnDaw, m);
-                }
+    vector<vector<int>> prms(maxMidiCh, vector<int>(10));
 
-            }
-            else if( 21<=lineNum && lineNum<=30 ){
-                
-                // line# 21 ~ 30
-                // FX 2 : effcter reverb?
-                int prm = lineNum - 20;
-                float m = mag.y * 0.004;
-                reaper.sendFxParam(track, 2, prm, m);
-            }
-            else if( 31<=lineNum && lineNum<=40 ){
-                
-                // line# 31 ~ 40
-                // FX 3 : effcter reverb?
-                int prm = lineNum - 30;
-                float m = mag.y * 0.004;
-                reaper.sendFxParam(track, 3, prm, m);
-            }
+    // check intersect & send noteOn
+    for(int i=0; i<maxMidiCh; i++){
+        
+        vector<int> & prm = prms[i];
+        
+        int lineId = i * dataWidth;
+
+        // Note On
+        ofPolyline & p = poly[lineId];
+        ofPolyline & m = magnitude[lineId];
+        glm::vec3 v = p.getPointAtPercent(percent);
+        glm::vec3 mag = m.getPointAtPercent(percent);
+        
+        triggerPoint.addVertex(v);
+        triggerPoint.addColor(ofFloatColor(0));
+        prm[0] = 1;
+        
+        for(int j=0; j<prm.size(); j++){
+            int prmId = j+1;
+            //ofPolyline & m = magnitude[lineId];
+            //glm::vec3 mag = m.getPointAtPercent(percent);
+            //int val = ofMap(mag.y, range["mag"].min, range["mag"].max, 0, 127);
+
+            //ofPolyline & r = rotation[lineId];
+            //glm::vec3 rot = r.getPointAtPercent(percent);
+            //int val = ofMap(rot.y, range["Rotation"].min, range["Rotation"].max, 0, 127);
+            
+            glm::vec3 axis(0,1,0);
+            glm::vec3 vn = glm::normalize(v);
+            float angle = glm::angle(vn, axis);
+             float val = ofMap(angle, -PI, PI, 0, 127);
+            prm[prmId] = val;
         }
     }
+    
+    //
+    //  send MIDI
+    //
+    for(int i=0; i<prms.size(); i++){
+
+        vector<int> & prm = prms[i];
+        int ch = i+1;
+        
+        int pan     = prm[4];
+        int cc13    = prm[5];
+        int cc14    = prm[6];
+        int cc15    = prm[7];
+        int cc16    = prm[8];
+        int cc17    = prm[9];
+        sender.sendCC(ch, 9, pan);
+        sender.sendCC(ch, 13, cc13);
+        sender.sendCC(ch, 14, cc14);
+        sender.sendCC(ch, 15, cc15);
+        sender.sendCC(ch, 16, cc16);
+        sender.sendCC(ch, 17, cc17);
+        
+        if(prm[0]==1){
+            int note = prm[1];
+            int vel  = prm[2] + 10;
+            int dur  = prm[3]*0.5 + 5;
+            sender.sendNoteOn(ch, note, vel, dur);
+            
+            printf("send midi %i ch, %i note,  %i vel, %i dur \n", ch, note, vel, dur);
+            // store data
+            //triggerData.push_back(TriggerData(midiCh, note, vel, dur));
+        }
+    }
+    
+    cout << endl;
 
 }
 
@@ -220,8 +203,14 @@ void ofApp::draw(){
         points.draw();
         
         // collision
-        glPointSize(6);
+        glPointSize(10);
         triggerPoint.draw();
+        for(int i=0; i<triggerPoint.getNumVertices(); i++){
+            glm::vec3 v = triggerPoint.getVertex(i);
+            ofFill();
+            ofSetColor(255,0,0);
+            ofDrawSphere(v, 5);
+        }
         
         // circle surface
         for(auto & t : surface){
@@ -231,29 +220,29 @@ void ofApp::draw(){
         }
     }cam.end();
     
-    //ofDisableAntiAliasing();
-    ofSetupScreenOrtho();
-    vector<int> nTrigger;
-    nTrigger.assign(16,0);
-    for(int i=0; i<triggerData.size(); i++){
-        TriggerData & d = triggerData[i];
-        glm::vec3 & v = d.pos;
-        glm::vec3 s1 = cam.worldToScreen(v);
-        bool left = d.midiCh<5;
-        int x = left ? 220 : ofGetWidth()-220;
-        int y = 50 + (d.midiCh%5) * 200;
-        glm::vec3 s2(x, y+nTrigger[d.midiCh]*10, 0);
-        
-        //ofSetLineWidth(1);
-        //ofSetColor(0);
-        //ofDrawLine(s1, s2);
-        char c[255];
-        sprintf(c, "noteOn ch%i n%i v%i d%i", d.midiCh, d.note, d.vel, d.dur);
-        ofSetColor(100);
-        int sx = s2.x + (left ? -200:30);
-        ofDrawBitmapString(string(c), sx, s2.y);
-        nTrigger[d.midiCh]++;
-    }
+//    //ofDisableAntiAliasing();
+//    ofSetupScreenOrtho();
+//    vector<int> nTrigger;
+//    nTrigger.assign(16,0);
+//    for(int i=0; i<triggerData.size(); i++){
+//        TriggerData & d = triggerData[i];
+//        glm::vec3 & v = d.pos;
+//        glm::vec3 s1 = cam.worldToScreen(v);
+//        bool left = d.midiCh<5;
+//        int x = left ? 220 : ofGetWidth()-220;
+//        int y = 50 + (d.midiCh%5) * 200;
+//        glm::vec3 s2(x, y+nTrigger[d.midiCh]*10, 0);
+//        
+//        //ofSetLineWidth(1);
+//        //ofSetColor(0);
+//        //ofDrawLine(s1, s2);
+//        char c[255];
+//        sprintf(c, "noteOn ch%i n%i v%i d%i", d.midiCh, d.note, d.vel, d.dur);
+//        ofSetColor(100);
+//        int sx = s2.x + (left ? -200:30);
+//        ofDrawBitmapString(string(c), sx, s2.y);
+//        nTrigger[d.midiCh]++;
+//    }
 }
 
 void ofApp::keyPressed(int key){
@@ -268,11 +257,15 @@ void ofApp::keyPressed(int key){
             break;
             
         case 't':
-            reaper.sendNoteOn(0, ofRandom(36,60), ofRandom(80,120), ofRandom(10,100));
+            sender.sendNoteOn(0, ofRandom(36,60), ofRandom(80,120), ofRandom(10,100));
             break;
             
         case 'R':
-            reaper.sendNoteOffAll();
+            sender.sendNoteOffAll();
+            break;
+            
+        case '0':
+            frame = 0;
             break;
             
         default:
@@ -314,5 +307,5 @@ void ofApp::printOscIn(){
 }
 
 void ofApp::exit(){
-    reaper.sendNoteOffAll();
+    sender.sendNoteOffAll();
 }
