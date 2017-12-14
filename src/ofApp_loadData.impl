@@ -43,6 +43,8 @@ void ofApp::loadData(string fileName){
     vector<double> vel0, vel1, vel2;
     vector<double> mag;
     vector<double> time;
+    vector<double> rot;
+    
     
     while(getline(file,str)){
         
@@ -63,6 +65,7 @@ void ofApp::loadData(string fileName){
         double v1 = entry[paramId["vel:1"]];
         double v2 = entry[paramId["vel:2"]];
         double t = entry[paramId["IntegrationTime"]];
+        double r = entry[paramId["Rotation"]];
         
         glm::vec3 vel(v0, v1, v2);
         
@@ -76,6 +79,7 @@ void ofApp::loadData(string fileName){
         vel2.push_back(v2);
         mag.push_back(m);
         time.push_back(t);
+        rot.push_back(r);
     }
     
     double pos0Min = *min_element(pos0.begin(), pos0.end());
@@ -86,6 +90,8 @@ void ofApp::loadData(string fileName){
     double vel2Min = *min_element(vel2.begin(), vel2.end());
     double magMin  = *min_element(mag.begin(), mag.end());
     double timeMin = *min_element(time.begin(), time.end());
+    double rotMin = *min_element(rot.begin(), rot.end());
+    
     
     double pos0Max = *max_element(pos0.begin(), pos0.end());
     double pos1Max = *max_element(pos1.begin(), pos1.end());
@@ -95,6 +101,7 @@ void ofApp::loadData(string fileName){
     double vel2Max = *max_element(vel2.begin(), vel2.end());
     double magMax  = *max_element(mag.begin(), mag.end());
     double timeMax = *max_element(time.begin(), time.end());
+    double rotMax = *max_element(rot.begin(), rot.end());
     
     range.insert({"Points:0", ofRange(pos0Min, pos0Max)});
     range.insert({"Points:1", ofRange(pos1Min, pos1Max)});
@@ -107,6 +114,7 @@ void ofApp::loadData(string fileName){
     
     range.insert({"Points:123", range["Points:0"] + range["Points:1"] + range["Points:2"]});
     range.insert({"vel:123", range["vel:0"] + range["vel:1"] + range["vel:2"]});
+    range.insert({"Rotation", ofRange(rotMin, rotMax)});
     
     for(int i=0; i<pos0.size(); i++){
         
@@ -117,6 +125,7 @@ void ofApp::loadData(string fileName){
             
             poly.push_back(ofPolyline());
             magnitude.push_back(ofPolyline());
+            rotation.push_back(ofPolyline());
         }
         
         glm::vec3 pos(pos0[i], -pos1[i], pos2[i]);
@@ -146,6 +155,10 @@ void ofApp::loadData(string fileName){
         
         int vId = mesh.back().getNumVertices();
         magnitude.back().addVertex(glm::vec3(vId, m, 0));
+        
+        float r = rot[i];
+        rotation.back().addVertex(glm::vec3(vId, r, 0));
+        
     }
     
     int numPoly = poly.size();
@@ -157,6 +170,8 @@ void ofApp::loadData(string fileName){
     vector<ofVboMesh>::iterator  meshit = mesh.begin();
     vector<ofPolyline>::iterator polyit = poly.begin();
     vector<ofPolyline>::iterator magit  = magnitude.begin();
+    vector<ofPolyline>::iterator rotit  = rotation.begin();
+
     int numDeleted = 0;
     for(int i=0; meshit!=mesh.end(); i++, meshit++, polyit++, magit++){
         
@@ -168,6 +183,8 @@ void ofApp::loadData(string fileName){
             mesh.erase(meshit--);
             poly.erase(polyit--);
             magnitude.erase(magit--);
+            rotation.erase(rotit--);
+
             numDeleted++;
         }
     }

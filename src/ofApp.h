@@ -3,7 +3,8 @@
 #include "ofMain.h"
 #include "ofxOsc.h"
 #include "ofRange.h"
-#include "ReaperControl.h"
+
+#include "MidiSender.h"
 
 class TriggerSurface{
     
@@ -41,6 +42,7 @@ public:
     :pos(_pos), midiCh(_midiCh), note(_note), vel(_vel), dur(_dur), dispLife(10){};
 
     glm::vec3 pos;
+
     int midiCh;
     int note;
     int vel;
@@ -72,6 +74,8 @@ public:
     vector<ofVboMesh> mesh;
     vector<ofPolyline> poly;
     vector<ofPolyline> magnitude;
+    vector<ofPolyline> rotation;
+    
     vector<ofVboMesh> graph;
     vector<TriggerSurface> surface;
     
@@ -85,7 +89,9 @@ public:
     ofEasyCam cam;
     ofxOscReceiver receiver;
 
-    ReaperControl reaper;
-
     vector<TriggerData> triggerData;
+    
+    MidiSender sender;
+
+    int frame = 0;
 };

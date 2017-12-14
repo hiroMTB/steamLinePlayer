@@ -17,7 +17,6 @@ public:
     };
     
     void update(){
-
         for(vector<int> & v : noteOnState){
             for(int i=0; i<v.size(); i++){
                 int wait = v[i];
@@ -26,7 +25,7 @@ public:
         }
     }
     
-    void sendNoteOn(unsigned int midiCh, unsigned int noteNum, unsigned int velocity, unsigned int duration){
+    void sendNoteOn(int midiCh, int noteNum, int velocity, int duration){
 
         if(noteOnState[midiCh][noteNum] != 0 ) return;
         noteOnState[midiCh][noteNum] = resetValue;
@@ -43,7 +42,7 @@ public:
         noteOffThread.detach();
     }
     
-    void sendNoteOff(string address, unsigned int duration){
+    void sendNoteOff(string address, int duration){
         if(duration!=0) std::this_thread::sleep_for( chrono::microseconds(duration*1000) );
         ofxOscMessage off;
         off.setAddress(address);
@@ -52,7 +51,7 @@ public:
         //ofLogVerbose("Note OFF", address);
     }
     
-    void sendFxParam(unsigned int track, unsigned int fx, unsigned int prm, float value){
+    void sendFxParam(int track, int fx, int prm, float value){
         ofxOscMessage msg;
 
         char c[255];
