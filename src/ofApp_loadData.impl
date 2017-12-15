@@ -45,7 +45,6 @@ void ofApp::loadData(string fileName){
     vector<double> time;
     vector<double> rot;
     
-    
     while(getline(file,str)){
         
         string token;
@@ -116,14 +115,15 @@ void ofApp::loadData(string fileName){
     range.insert({"vel:123", range["vel:0"] + range["vel:1"] + range["vel:2"]});
     range.insert({"Rotation", ofRange(rotMin, rotMax)});
     
+
     for(int i=0; i<pos0.size(); i++){
         
         if(time[i] == 0){
             
-            mesh.push_back(ofVboMesh());
-            mesh.back().setMode(OF_PRIMITIVE_LINE_STRIP);
-            
-            poly.push_back(ofPolyline());
+            streamMesh.push_back(ofVboMesh());
+            streamMesh.back().setMode(OF_PRIMITIVE_LINE_STRIP);
+                        
+            streamPoly.push_back(ofPolyline());
             magnitude.push_back(ofPolyline());
             rotation.push_back(ofPolyline());
         }
@@ -148,12 +148,13 @@ void ofApp::loadData(string fileName){
         col =  red*cRate + blue*(1.0-cRate);
         col.a = 0.2;
         
-        mesh.back().addVertex(pos);
-        mesh.back().addColor(col);
+        streamMesh.back().addVertex(pos);
+        streamMesh.back().addColor(col);
         
-        poly.back().addVertex(pos);
+        streamPoly.back().addVertex(pos);
         
-        int vId = mesh.back().getNumVertices();
+        
+        int vId = streamMesh.back().getNumVertices();
         magnitude.back().addVertex(glm::vec3(vId, m, 0));
         
         float r = rot[i];
@@ -161,33 +162,58 @@ void ofApp::loadData(string fileName){
         
     }
     
-    int numPoly = poly.size();
-    cout << endl << "create " << numPoly << " polylines" << endl;
+    int numStream = streamPoly.size();
+    cout << endl << "create " << numStream << " polylines" << endl;
     
-    
-    // delete short one
-    // deleted short lines
-    vector<ofVboMesh>::iterator  meshit = mesh.begin();
-    vector<ofPolyline>::iterator polyit = poly.begin();
+    // deleted short streams
+    vector<ofVboMesh>::iterator  meshit = streamMesh.begin();
+    vector<ofPolyline>::iterator polyit = streamPoly.begin();
     vector<ofPolyline>::iterator magit  = magnitude.begin();
     vector<ofPolyline>::iterator rotit  = rotation.begin();
 
     int numDeleted = 0;
-    for(int i=0; meshit!=mesh.end(); i++, meshit++, polyit++, magit++){
+    for(int i=0; meshit!=streamMesh.end(); i++, meshit++, polyit++, magit++, rotit++){
         
         int num = meshit->getNumVertices();
         float length = polyit->getLengthAtIndex(polyit->getPerimeter());
-        //glm::vec3 dir = meshit->getVertices()[meshit->getNumVertices()] - meshit->getVertices()[0];
-        //float length = glm::length(dir);
-        if(length < 10 || num<10){
-            mesh.erase(meshit--);
-            poly.erase(polyit--);
+        if(length < 600 || num<30){
+            streamMesh.erase(meshit--);
+            streamPoly.erase(polyit--);
             magnitude.erase(magit--);
             rotation.erase(rotit--);
-
             numDeleted++;
         }
     }
     cout << "deleted " << numDeleted << " data because too few vertices : " << endl;
     
+    
+    numStream = streamPoly.size();
+    
+    // create triggerPoint
+    triggerPoint.assign(maxMidiCh, ofVboMesh());
+    triggerPointLength.assign(maxMidiCh, vector<float>());
+    
+    int dataWidth = numStream/maxMidiCh;
+    
+    for(int i=0; i<maxMidiCh; i++){
+        
+        int stId = i * dataWidth;
+        triggerPoint[i].setMode(OF_PRIMITIVE_POINTS);
+        cout << "TriggerLen ch " << i+1;
+        for(int j=0; j<streamMesh[stId].getNumVertices(); j++){
+            
+            if(j%triggerResolution==0){
+                glm::vec3 pos = streamMesh[stId].getVertex(j);
+                triggerPoint[i].addVertex(pos);
+                triggerPoint[i].addColor(ofFloatColor(0.2, 0.85));
+                
+                float len = streamPoly[stId].getLengthAtIndex(j);
+                triggerPointLength[i].push_back(len);
+                
+                cout << len << " ";
+            }
+        }
+        cout << endl;
+    }
+
 }

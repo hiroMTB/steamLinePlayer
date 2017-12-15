@@ -51,9 +51,11 @@ public:
         noteOff.push_back(MIDI_NOTE_OFF+(midiCh-1));
         noteOff.push_back(noteNum);
         noteOff.push_back(0);
-        ofPtr<ofxBaseMidiOut> ofOut = mout.midiOut;
-        ofxRtMidiOut * rtOut = static_cast<ofxRtMidiOut*>(ofOut.get());
-        rtOut->midiOut.sendMessage(&noteOff);
+        if(mout.isOpen()){
+            ofPtr<ofxBaseMidiOut> ofOut = mout.midiOut;
+            ofxRtMidiOut * rtOut = static_cast<ofxRtMidiOut*>(ofOut.get());
+            rtOut->midiOut.sendMessage(&noteOff);
+        }
     }
     
     void sendCC(int midiCh, int cc, int value){

@@ -20,126 +20,100 @@ void ofApp::setup(){
     receiver.setup(9000);
 
     // csv data load
-    mesh.push_back(ofVboMesh());
-    mesh.back().setMode(OF_PRIMITIVE_LINE_STRIP);
-    
-    poly.push_back(ofPolyline());
+    streamMesh.push_back(ofVboMesh());
+    streamMesh.back().setMode(OF_PRIMITIVE_LINE_STRIP);
+        
+    streamPoly.push_back(ofPolyline());
     magnitude.push_back(ofPolyline());
-    points.setMode(OF_PRIMITIVE_POINTS);
+    rotation.push_back(ofPolyline());
+    indicator.setMode(OF_PRIMITIVE_POINTS);
     prmLine.setMode(OF_PRIMITIVE_LINES);
-    triggerPoint.setMode(OF_PRIMITIVE_POINTS);
-    //loadData("musical_cylinder_04_strm_01.csv");
+    
     loadData("musical_cylinder_04_strm_02.csv");
     
-    // construct surface
-    int nSurface = 21;
-    int surfaceWidth = 1000.0f/(nSurface-1);
-    for(int i=0; i<nSurface; i++){
-        surface.push_back(TriggerSurface());
-        surface.back().set(glm::vec3(0,0, i*surfaceWidth-500), 100, 100);
-    }
 }
 
 void ofApp::update(){
     
     sender.update();
+    float speed = 0.3;
+    int duration = ofGetTargetFrameRate() * 60 * 10;
     
-    int duration = ofGetTargetFrameRate() * 60 * 1;
-    frame = ++frame % duration;
-    float percent = (float)frame/duration;
+#pragma mark Check TriggerPoint
     
-    points.clear();
+    indicator.clear();
     prmLine.clear();
     
-    triggerPoint.clear();
-    
-    vector<TriggerData>::iterator it = triggerData.begin();
-    for(; it!=triggerData.end(); it++){
-        it->dispLife -=1;
-        if(it->dispLife<=0){
-            triggerData.erase(it);
-            it--;
-        }
-    }
-    
-    int numPoly = poly.size();
-    
-    
-    for( int i=0; i<numPoly; i++){
-        ofPolyline & p = poly[i];
-        ofPolyline & m = magnitude[i];
-        ofPolyline & r = rotation[i];
+    int numStream = streamPoly.size();
+    int dataWidth = numStream/maxMidiCh;
+
+    vector<vector<int>> prms(maxMidiCh, vector<int>(10));
+
+    for(int i=0; i<maxMidiCh; i++){
         
-        glm::vec3 v = p.getPointAtPercent(percent);
-        glm::vec3 mag = m.getPointAtPercent(percent);
-        glm::vec3 rot = r.getPointAtPercent(percent);
+        int lineId = i * dataWidth;
+
+        ofPolyline & p = streamPoly[lineId];
+        ofPolyline & m = magnitude[lineId];
+        
+        glm::vec3 v = p.getPointAtLength(frame);
+        glm::vec3 mag = m.getPointAtLength(frame);
         
         ofFloatColor red(1,0,0);
         ofFloatColor blue(0,0,1);
         ofFloatColor col;
-
-        float len = rot.y * 0.004;
+        
+        float len = mag.y * 0.004;
         col =  red*len + blue*(1.0-len);
         col.a = 0.9;
         
-        points.addVertex(v);
-        points.addColor(col);
+        indicator.addVertex(v);
+        indicator.addColor(col);
         
-        {
-            glm::vec3 zerovec(0,0,v.z);
-            prmLine.addVertex(zerovec);
-            prmLine.addVertex(v);
-            col.a = 0.4;
-            prmLine.addColor(ofFloatColor(col));
-            prmLine.addColor(ofFloatColor(col));
-        }
-    }
+        glm::vec3 zerovec(0,0,v.z);
+        prmLine.addVertex(zerovec);
+        prmLine.addVertex(v);
+        col.a = 0.4;
+        prmLine.addColor(ofFloatColor(col));
+        prmLine.addColor(ofFloatColor(col));
+        
+        
+#pragma mark Check if hits
     
-    // sender
-    // Midi Ch      : 1 ~ 16
-    int maxMidiCh = 16;
-    int dataWidth = numPoly/maxMidiCh;
-
-    vector<vector<int>> prms(maxMidiCh, vector<int>(10));
-
-    // check intersect & send noteOn
-    for(int i=0; i<maxMidiCh; i++){
-        
+        float currentLen = frame;
+        float nextLen = currentLen + speed;
         vector<int> & prm = prms[i];
         
-        int lineId = i * dataWidth;
-
-        // Note On
-        ofPolyline & p = poly[lineId];
-        ofPolyline & m = magnitude[lineId];
-        glm::vec3 v = p.getPointAtPercent(percent);
-        glm::vec3 mag = m.getPointAtPercent(percent);
+        for(int j=0; j<triggerPointLength[i].size(); j++){
+            float tlen = triggerPointLength[i][j];
+            prm[0] = (currentLen <= tlen && tlen <nextLen);
+            if(prm[0]) break;
+        }
         
-        triggerPoint.addVertex(v);
-        triggerPoint.addColor(ofFloatColor(0));
-        prm[0] = 1;
-        
+#pragma mark send CC anyway
         for(int j=0; j<prm.size(); j++){
             int prmId = j+1;
-            //ofPolyline & m = magnitude[lineId];
-            //glm::vec3 mag = m.getPointAtPercent(percent);
-            //int val = ofMap(mag.y, range["mag"].min, range["mag"].max, 0, 127);
 
-            //ofPolyline & r = rotation[lineId];
-            //glm::vec3 rot = r.getPointAtPercent(percent);
-            //int val = ofMap(rot.y, range["Rotation"].min, range["Rotation"].max, 0, 127);
-            
-            glm::vec3 axis(0,1,0);
-            glm::vec3 vn = glm::normalize(v);
-            float angle = glm::angle(vn, axis);
-             float val = ofMap(angle, -PI, PI, 0, 127);
+            float val = 0;
+            if(prmId==-1){
+                // noteOn
+                glm::vec2 axis(0,1);
+                glm::vec2 vn(v.x, v.y);
+                vn = glm::normalize(vn);
+                float angle = glm::orientedAngle(vn, axis);
+                cout << angle << endl;
+                val = ofMap(angle, -TWO_PI, TWO_PI, 36, 36+12*4);
+            }else{
+                // Other Prm
+                ofPolyline & m = magnitude[lineId];
+                glm::vec3 mag = m.getPointAtLength(frame);
+                val = ofMap(mag.y, range["mag"].min, range["mag"].max, 0, 127);
+            }
             prm[prmId] = val;
         }
     }
-    
-    //
-    //  send MIDI
-    //
+
+#pragma mark Send Midi at once
     for(int i=0; i<prms.size(); i++){
 
         vector<int> & prm = prms[i];
@@ -159,18 +133,19 @@ void ofApp::update(){
         sender.sendCC(ch, 17, cc17);
         
         if(prm[0]==1){
-            int note = prm[1];
-            int vel  = prm[2] + 10;
-            int dur  = prm[3]*0.5 + 5;
+            int note = prm[1]*0.5 + 36;
+            int vel  = prm[2] + 30;
+            int dur  = prm[3] + 30;
             sender.sendNoteOn(ch, note, vel, dur);
             
-            printf("send midi %i ch, %i note,  %i vel, %i dur \n", ch, note, vel, dur);
+            printf("send midi %0.1f, %ich, %i note,  %i vel, %i dur \n", frame, ch, note, vel, dur);
             // store data
             //triggerData.push_back(TriggerData(midiCh, note, vel, dur));
         }
-    }
-    
-    cout << endl;
+    }    
+
+    frame += speed;
+    frame = fmod(frame, duration);
 
 }
 
@@ -191,7 +166,7 @@ void ofApp::draw(){
         ofDrawAxis(100);
         
         if(!bPrmMode){
-            for(auto & m : mesh){
+            for(auto & m : streamMesh){
                 m.draw();
             }
         }else{
@@ -199,50 +174,17 @@ void ofApp::draw(){
         }
         
         // indicator
-        glPointSize(3);
-        points.draw();
+        glPointSize(8);
+        indicator.draw();
         
-        // collision
-        glPointSize(10);
-        triggerPoint.draw();
-        for(int i=0; i<triggerPoint.getNumVertices(); i++){
-            glm::vec3 v = triggerPoint.getVertex(i);
-            ofFill();
-            ofSetColor(255,0,0);
-            ofDrawSphere(v, 5);
-        }
-        
-        // circle surface
-        for(auto & t : surface){
-            ofNoFill();
-            ofSetColor(100,50);
+        // trigger point
+        glPointSize(4);
+        for(auto & t : triggerPoint){
             t.draw();
         }
+
     }cam.end();
-    
-//    //ofDisableAntiAliasing();
-//    ofSetupScreenOrtho();
-//    vector<int> nTrigger;
-//    nTrigger.assign(16,0);
-//    for(int i=0; i<triggerData.size(); i++){
-//        TriggerData & d = triggerData[i];
-//        glm::vec3 & v = d.pos;
-//        glm::vec3 s1 = cam.worldToScreen(v);
-//        bool left = d.midiCh<5;
-//        int x = left ? 220 : ofGetWidth()-220;
-//        int y = 50 + (d.midiCh%5) * 200;
-//        glm::vec3 s2(x, y+nTrigger[d.midiCh]*10, 0);
-//        
-//        //ofSetLineWidth(1);
-//        //ofSetColor(0);
-//        //ofDrawLine(s1, s2);
-//        char c[255];
-//        sprintf(c, "noteOn ch%i n%i v%i d%i", d.midiCh, d.note, d.vel, d.dur);
-//        ofSetColor(100);
-//        int sx = s2.x + (left ? -200:30);
-//        ofDrawBitmapString(string(c), sx, s2.y);
-//        nTrigger[d.midiCh]++;
-//    }
+
 }
 
 void ofApp::keyPressed(int key){
